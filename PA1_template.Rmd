@@ -1,25 +1,143 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Reproducable Research Project 1"
+author: "Mark Brown"
+date: "September 10, 2018"
+output: html_document
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
 
-## Loading and preprocessing the data
+## Set up R and loading in the data
 
+```{r}
 
-
-## What is mean total number of steps taken per day?
-
-
-
-## What is the average daily activity pattern?
-
-
-
-## Imputing missing values
+library(tidyverse)
+library(VIM)
+library(mice)
+library(quantmod)
 
 
+activity <- read_csv("activity.csv")
 
-## Are there differences in activity patterns between weekdays and weekends?
+```
+
+##Histogram of steps
+
+```{r}
+activity %>% group_by(date) %>% summarise(stepsPerDay = sum(steps)) %>% 
+  ggplot(aes(x = stepsPerDay)) + geom_histogram(bins = 15) + 
+  ggtitle("Total Number of Steps Per Day Distribution") + xlab("Steps Per Day") + 
+  ylab("Frequency")
+
+```
+
+##Mean and Mediam
+```{r}
+activity %>% group_by(date) %>% 
+  summarise(meanStepsByDay = mean(steps, na.rm = TRUE)) %>% 
+  summarise(meanSteps = mean(meanStepsByDay, na.rm = TRUE))
+
+
+activity %>% group_by(date) %>% 
+  summarise(medianStepsByDay = median(steps, na.rm = TRUE)) %>%
+  summarise(medianSteps = median(medianStepsByDay, na.rm = TRUE))
+```
+
+```{r}
+activity %>% group_by(date) %>% summarise(meanSteps = mean(steps, na.rm = TRUE)) %>%
+  ggplot(aes(x = date, y = meanSteps)) + geom_line() + 
+  ggtitle("Mean Steps by Date") + xlab("Date") + ylab("Mean Steps")
+  
+
+```
+
+# 5 min intervals (max steps)
+```{r}
+activity %>% group_by(interval) %>% 
+  summarize(meanByInterval = mean(steps, na.rm = TRUE)) %>%
+  filter(meanByInterval == max(meanByInterval))
+```
+# 5 min intervals (min steps)
+```{r}
+activity %>% group_by(interval) %>% 
+  summarize(meanByInterval = mean(steps, na.rm = TRUE)) %>%
+  filter(meanByInterval == min(meanByInterval))
+```  
+  
+# Dealing with missing data
+```{r}
+md.pattern(activity)
+(missing <- sum(is.na(activity)))
+````
+
+#Percent total of missing values and visulalization of missing values
+
+```{r}
+missing_percent <- sum(is.na(activity))/(dim(activity)[1]*dim(activity)[2]) * 100 
+pMiss <- function(x) { sum(is.na(x)) / length(x) * 100}
+(missing_better <-apply(activity, 2, pMiss))
+
+aggr(activity, numbers = TRUE)
+
+```
+
+#Delete the missing values and repeat
+
+```{r}
+activity_no_missing <- activity[complete.cases(activity),]
+```
+
+#Histogram
+
+```{r}
+activity_no_missing %>% group_by(date) %>% summarise(stepsPerDay = sum(steps)) %>% 
+  ggplot(aes(x = stepsPerDay)) + geom_histogram(bins = 15) + 
+  ggtitle("Histogram: Total Number of Steps Per Day") + xlab("Steps Per Day") + 
+  ylab("Frequency")
+
+```
+
+#Time Series Plot
+
+
+```{r}
+activity_no_missing %>% group_by(date) %>% summarise(meanSteps = mean(steps, na.rm = TRUE)) %>%
+  ggplot(aes(x = date, y = meanSteps)) + geom_line() + 
+  ggtitle("Mean Steps by Date") + xlab("Date") + ylab("Mean Steps")
+
+```
+
+#Comparing Weekend and Weekdays
+
+```{r}
+weekend <- activity_no_missing %>% mutate(dayofweek = weekdays(date)) %>%
+  mutate(Weekend = ifelse(dayofweek == "Saturday" | dayofweek == "Sunday", "Weekend", "Weekday"))
+
+weekend %>% 
+  group_by(Weekend, interval) %>% mutate(meanStepsInterval = mean(steps)) %>%
+  ggplot(aes(x = interval, y = meanStepsInterval)) + geom_line() +
+  facet_wrap(~Weekend) +ggtitle("Mean Steps by Interval: Weekday vs. Weekend") + 
+  xlab("Interval") + ylab("Mean Steps")
+
+```
+
+#Broken into each day of the week
+
+```{r}
+weekend %>%
+  group_by(dayofweek, interval) %>% mutate(meanStepsInterval = mean(steps)) %>%
+  ggplot(aes(x = interval, y = meanStepsInterval)) + geom_line() +
+  facet_wrap(~dayofweek) +ggtitle("Mean Steps by Interval: By Day") +
+  xlab("Interval") + ylab("Mean Steps")
+```
+
+
+
+
+
+
+
+
+
